@@ -5,8 +5,8 @@
  * Copyright 2011, Licensed GPL & MIT
  *
 */
-
-window.Swipe = function(element, options) {
+//TODO PUT SHIT IN OPTIONS
+window.Swipe = function(element, options, cellPaddedWidth, cellPaddedHeight, columns) {
 
   // return immediately if element doesn't exist
   if (!element) return null;
@@ -30,7 +30,7 @@ window.Swipe = function(element, options) {
   this.element.style.margin = 0;
 
   // trigger slider initialization
-  this.setup();
+  this.setup(cellPaddedWidth, cellPaddedHeight, columns);
 
   // begin auto slideshow
   this.begin();
@@ -51,7 +51,7 @@ window.Swipe = function(element, options) {
 
 Swipe.prototype = {
 
-  setup: function() {
+  setup: function(cellwidth, cellheight, columns) {
 
     // get and measure amt of slides
     this.slides = this.element.children;
@@ -62,20 +62,20 @@ Swipe.prototype = {
 
     // determine width of each slide
     this.width = ("getBoundingClientRect" in this.container) ? this.container.getBoundingClientRect().width : this.container.offsetWidth;
-
     // return immediately if measurement fails
     if (!this.width) return null;
 
     // hide slider element but keep positioning during setup
     this.container.style.visibility = 'hidden';
 
+
     // dynamic css
-    this.element.style.width = (this.slides.length * this.width) + 'px';
     var index = this.slides.length;
     while (index--) {
       var el = this.slides[index];
-      el.style.width = this.width + 'px';
-      el.style.display = 'table-cell';
+      el.style.width =  cellwidth+ 'px';
+      el.style.height = cellheight+'px';
+      el.style.display = 'inline-block';
       el.style.verticalAlign = 'top';
     }
 
