@@ -22,7 +22,7 @@ window.Swipe = function(element, options, cellPaddedWidth, cellPaddedHeight, col
 
   // reference dom elements
   this.container = element;
-  this.element = this.container.children[0]; // the slide pane
+  this.element = this.container.children[0]; // the slide pane/<ul>
 
   // static css
   this.container.style.overflow = 'hidden';
@@ -62,19 +62,37 @@ Swipe.prototype = {
 
     // determine width of each slide
     this.width = ("getBoundingClientRect" in this.container) ? this.container.getBoundingClientRect().width : this.container.offsetWidth;
+    this.height = ("getBoundingClientRect" in this.container) ? this.container.getBoundingClientRect().height : this.container.offsetHeight;
+
+
     // return immediately if measurement fails
-    if (!this.width) return null;
+    if (!this.width || !this.height) return null;
 
     // hide slider element but keep positioning during setup
     this.container.style.visibility = 'hidden';
 
-
-    // dynamic css
+    // set sizing attributes
     var index = this.slides.length;
+    var extrawidth = this.width%cellwidth;
+    var cellsperrow = Math.floor(this.width/cellwidth);
+    var marginRight = extrawidth/cellsperrow;
+
+//FIX FOR WEBKIT ENGINES: NOTE THIS MEANS YOU CAN'T HAVE MARGIN 0
+    marginRight+=1;
+    this.element.style.width = columns*(extrawidth/cellsperrow + cellwidth)+'px';
+    var rows = 0;   
+    while(this.height > 0) {
+	rows++;
+	this.height -= cellheight;
+    } 
+    this.height += cellheight;
+    
     while (index--) {
       var el = this.slides[index];
       el.style.width =  cellwidth+ 'px';
       el.style.height = cellheight+'px';
+      el.style.marginRight = marginRight+'px';
+      el.style.marginBottom = this.height/(rows-1)+'px';
       el.style.display = 'inline-block';
       el.style.verticalAlign = 'top';
     }

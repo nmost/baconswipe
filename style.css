@@ -68,7 +68,7 @@ small {
 }
 
 #slider {
-  height: 100px;
+  height: 120px;
   width:640px;
 }
 .swipe {
@@ -81,4 +81,5 @@ small {
   color:#fff;
   font-size:20px;
   text-align:center;
+  border-bottom:1px solid black;
 }
