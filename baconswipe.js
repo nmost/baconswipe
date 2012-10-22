@@ -16,6 +16,7 @@ window.Swipe = function(element, options, cellPaddedWidth, cellPaddedHeight, col
   // retreive options
   this.options = options || {};
   this.index = this.options.startSlide || 0;
+  this.vindex = this.options.vindex || 0;
   this.speed = this.options.speed || 300;
   this.callback = this.options.callback || function() {};
   this.delay = this.options.auto || 0;
@@ -89,16 +90,19 @@ Swipe.prototype = {
 	this.height -= cellheight;
     } 
     this.height += cellheight;
+    var marginBottom = this.height/(rows - 1);
+    this.cellverticalsize = cellheight + marginBottom;
     if(this.individual)
         this.hpages = this.columns;
     else
         this.hpages = Math.ceil(this.columns/(this.width/cellwidth)); 
+    this.vpages = 2;
     while (index--) {
       var el = this.slides[index];
       el.style.width =  cellwidth+ 'px';
       el.style.height = cellheight+'px';
       el.style.marginRight = marginRight+'px';
-      el.style.marginBottom = this.height/(rows - 1)+'px';
+      el.style.marginBottom = marginBottom +'px';
       el.style.display = 'inline-block';
       el.style.verticalAlign = 'top';
     }
@@ -241,10 +245,11 @@ Swipe.prototype = {
     if(e.touches.length > 1 || e.scale && e.scale !== 1) return;
 
     this.deltaX = e.touches[0].pageX - this.start.pageX;
+    this.deltaY = e.touches[0].pageY - this.start.pageY;
 
     // determine if scrolling test has run - one time test
     if ( typeof this.isScrolling == 'undefined') {
-      this.isScrolling = !!( this.isScrolling || Math.abs(this.deltaX) < Math.abs(e.touches[0].pageY - this.start.pageY) );
+      this.isScrolling = !!( this.isScrolling || Math.abs(this.deltaX) < Math.abs(this.deltaY) );
     }
 
     // if user is not trying to scroll vertically
@@ -267,9 +272,17 @@ Swipe.prototype = {
           : 1 );                                          // no resistance if false
       
       // translate immediately 1-to-1
-      this.element.style.MozTransform = this.element.style.webkitTransform = 'translate3d(' + (this.deltaX - this.index * this.cellhorizontalwidth) + 'px,0,0)';
+      if (this.individual)
+      	this.element.style.MozTransform = this.element.style.webkitTransform = 'translate3d(' + (this.deltaX - this.index * this.cellhorizontalsize) + 'px,0,0)';
+      else
+        this.element.style.MozTransform = this.element.style.webkitTransform = 'translate3d(' + (this.deltaX - this.index * this.width) + 'px,0,0)';
       
       e.stopPropagation();
+    } else if (this.isScrolling){
+       clearTimeout(this.interval);
+       
+       this.element.style.MozTransform = this.element.style.webkitTransform = 'translate3D(0,'+(this,deltaY - this.vindex * this.cellverticalsize) + 'px,0)';
+       e.stopPropagation();
     }
 
   },
@@ -277,22 +290,17 @@ Swipe.prototype = {
   onTouchEnd: function(e) {
 
     // determine if slide attempt triggers next/prev slide
-    var isValidSlide = 
-          Number(new Date()) - this.start.time < 250      // if slide duration is less than 250ms
-          && Math.abs(this.deltaX) > 20                   // and if slide amt is greater than 20px
-          || Math.abs(this.deltaX) > this.cellhorizontalwidth/2,        // or if slide amt is greater than half the width
+    var isValidSlide; 
 
     // determine if slide attempt is past start and end
-        isPastBounds = 
-          !this.index && this.deltaX > 0                          // if first slide and slide amt is greater than 0
-          || this.index == this.hpages;// && this.deltaX < 0;    // or if last slide and slide amt is less than 0
+    var isPastBounds; 
 
     // if not scrolling vertically
     if (!this.isScrolling) {
-
+      isValidSlide = (Math.abs(this.deltaX) > 20) || (Math.abs(this.deltaX) > this.cellhorizontalsize/2);
+      isPastBounds = (!this.index && this.deltaX > 0) || (this.index == this.hpages - 1 && this.deltaX < 0);
       // call slide function with slide end value based on isValidSlide and isPastBounds tests
       this.slide( this.index + ( isValidSlide && !isPastBounds ? (this.deltaX < 0 ? 1 : -1) : 0 ), this.speed );
-
     }
     
     e.stopPropagation();
