@@ -19,6 +19,8 @@ window.Swipe = function(element, options, cellPaddedWidth, cellPaddedHeight, col
   this.speed = this.options.speed || 300;
   this.callback = this.options.callback || function() {};
   this.delay = this.options.auto || 0;
+  this.individual = this.options.individual || false;
+  this.columns = columns;
 
   // reference dom elements
   this.container = element;
@@ -30,7 +32,7 @@ window.Swipe = function(element, options, cellPaddedWidth, cellPaddedHeight, col
   this.element.style.margin = 0;
 
   // trigger slider initialization
-  this.setup(cellPaddedWidth, cellPaddedHeight, columns);
+  this.setup(cellPaddedWidth, cellPaddedHeight);
 
   // begin auto slideshow
   this.begin();
@@ -51,7 +53,7 @@ window.Swipe = function(element, options, cellPaddedWidth, cellPaddedHeight, col
 
 Swipe.prototype = {
 
-  setup: function(cellwidth, cellheight, columns) {
+  setup: function(cellwidth, cellheight) {
 
     // get and measure amt of slides
     this.slides = this.element.children;
@@ -79,20 +81,24 @@ Swipe.prototype = {
 
 //FIX FOR WEBKIT ENGINES: NOTE THIS MEANS YOU CAN'T HAVE MARGIN 0
     marginRight+=1;
-    this.element.style.width = columns*(extrawidth/cellsperrow + cellwidth)+'px';
+    this.cellhorizontalsize = marginRight + cellwidth + 1;
+    this.element.style.width = this.columns*(this.cellhorizontalsize)+'px';
     var rows = 0;   
     while(this.height > 0) {
 	rows++;
 	this.height -= cellheight;
     } 
     this.height += cellheight;
-    
+    if(this.individual)
+        this.hpages = this.columns;
+    else
+        this.hpages = Math.ceil(this.columns/(this.width/cellwidth)); 
     while (index--) {
       var el = this.slides[index];
       el.style.width =  cellwidth+ 'px';
       el.style.height = cellheight+'px';
       el.style.marginRight = marginRight+'px';
-      el.style.marginBottom = this.height/(rows-1)+'px';
+      el.style.marginBottom = this.height/(rows - 1)+'px';
       el.style.display = 'inline-block';
       el.style.verticalAlign = 'top';
     }
@@ -118,9 +124,14 @@ Swipe.prototype = {
     style.webkitTransitionDuration = style.MozTransitionDuration = style.msTransitionDuration = style.OTransitionDuration = style.transitionDuration = duration + 'ms';
 
     // translate to given index position
-    style.MozTransform = style.webkitTransform = 'translate3d(' + -(index * this.width) + 'px,0,0)';
-    style.msTransform = style.OTransform = 'translateX(' + -(index * this.width) + 'px)';
+    if(this.individual) {
+      style.MozTransform = style.webkitTransform = 'translate3d(' + -(index * this.cellhorizontalsize) + 'px,0,0)';
+      style.msTransform = style.OTransform = 'translateX(' + -(index * this.cellhorizontalsize) + 'px)';
+    } else {
+      style.MozTransform = style.webkitTransform = 'translate3d(' + -(index * this.width) + 'px,0,0)';
+      style.msTransform = style.OTransform = 'translateX(' + -(index * this.width) + 'px)';
 
+    }
     // set new index to allow for expression arguments
     this.index = index;
 
@@ -150,7 +161,7 @@ Swipe.prototype = {
     this.delay = delay || 0;
     clearTimeout(this.interval);
 
-    if (this.index < this.length - 1) this.slide(this.index+1, this.speed); // if not last slide
+    if (this.index < this.hpages - 1) this.slide(this.index+1, this.speed); // if not last slide
     else this.slide(0, this.speed); //if last slide return to start
 
   },
@@ -214,8 +225,9 @@ Swipe.prototype = {
     // used for testing first onTouchMove event
     this.isScrolling = undefined;
     
-    // reset deltaX
+    // reset deltaX and Y
     this.deltaX = 0;
+    this.deltaY = 0;
 
     // set transition time to 0 for 1-to-1 touch movement
     this.element.style.MozTransitionDuration = this.element.style.webkitTransitionDuration = 0;
@@ -248,14 +260,14 @@ Swipe.prototype = {
       this.deltaX = 
         this.deltaX / 
           ( (!this.index && this.deltaX > 0               // if first slide and sliding left
-            || this.index == this.length - 1              // or if last slide and sliding right
+            || this.index == this.hpages - 1              // or if last slide and sliding right
             && this.deltaX < 0                            // and if sliding at all
           ) ?                      
-          ( Math.abs(this.deltaX) / this.width + 1 )      // determine resistance level
+          ( Math.abs(this.deltaX) / this.cellhorizontalwidth + 1 )      // determine resistance level
           : 1 );                                          // no resistance if false
       
       // translate immediately 1-to-1
-      this.element.style.MozTransform = this.element.style.webkitTransform = 'translate3d(' + (this.deltaX - this.index * this.width) + 'px,0,0)';
+      this.element.style.MozTransform = this.element.style.webkitTransform = 'translate3d(' + (this.deltaX - this.index * this.cellhorizontalwidth) + 'px,0,0)';
       
       e.stopPropagation();
     }
@@ -268,12 +280,12 @@ Swipe.prototype = {
     var isValidSlide = 
           Number(new Date()) - this.start.time < 250      // if slide duration is less than 250ms
           && Math.abs(this.deltaX) > 20                   // and if slide amt is greater than 20px
-          || Math.abs(this.deltaX) > this.width/2,        // or if slide amt is greater than half the width
+          || Math.abs(this.deltaX) > this.cellhorizontalwidth/2,        // or if slide amt is greater than half the width
 
     // determine if slide attempt is past start and end
         isPastBounds = 
           !this.index && this.deltaX > 0                          // if first slide and slide amt is greater than 0
-          || this.index == this.length - 1 && this.deltaX < 0;    // or if last slide and slide amt is less than 0
+          || this.index == this.hpages;// && this.deltaX < 0;    // or if last slide and slide amt is less than 0
 
     // if not scrolling vertically
     if (!this.isScrolling) {
