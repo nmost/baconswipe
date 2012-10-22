@@ -82,8 +82,12 @@ Swipe.prototype = {
 
 //FIX FOR WEBKIT ENGINES: NOTE THIS MEANS YOU CAN'T HAVE MARGIN 0
     marginRight+=1;
+//define the horizontal size
     this.cellhorizontalsize = marginRight + cellwidth + 1;
+//set the UL width
     this.element.style.width = this.columns*(this.cellhorizontalsize)+'px';
+
+//calculate heights
     var rows = 0;   
     while(this.height > 0) {
 	rows++;
@@ -92,11 +96,17 @@ Swipe.prototype = {
     this.height += cellheight;
     var marginBottom = this.height/(rows - 1);
     this.cellverticalsize = cellheight + marginBottom;
-    if(this.individual)
+
+//set the number of "pages" the slider will slide through depending on if a "page" is an individual grid item or a full viewport's worth of grid items
+    if(this.individual) {
         this.hpages = this.columns;
-    else
+        this.vpages = this.rows;
+    }
+    else {
         this.hpages = Math.ceil(this.columns/(this.width/cellwidth)); 
-    this.vpages = 2;
+    	this.vpages = Math.ceil(this.rows/(this.height/cellheight));
+    }
+//set sizing variables for each cell
     while (index--) {
       var el = this.slides[index];
       el.style.width =  cellwidth+ 'px';
@@ -141,6 +151,21 @@ Swipe.prototype = {
 
   },
 
+  vslide: function(vindex, duration) {
+	var style = this.element.style;
+        if (duration == undefined)
+		duration = this.speed;
+	style.webkitTransitionDuration = style.MozTransitionDuration = style.msTransitionDuration = style.OTransitionDuration = style.transitionDuration = duration + 'ms';
+	if(this.individual) {
+      		style.MozTransform = style.webkitTransform = 'translate3d(0,' + -(vindex * this.cellverticalsize) + 'px,0)';
+     		style.msTransform = style.OTransform = 'translateY(' + -(vindex * this.cellverticalsize) + 'px)';
+    	} else { 
+      		style.MozTransform = style.webkitTransform = 'translate3d(0,' + -(vindex * this.height) + 'px,0)';
+      		style.msTransform = style.OTransform = 'translateY(' + -(vindex * this.height) + 'px)';
+	}
+	this.vindex = vindex;
+  },
+
   getPos: function() {
     
     // return current index position
@@ -179,7 +204,6 @@ Swipe.prototype = {
         _this.next(_this.delay);
       }, this.delay)
       : 0;
-  
   },
   
   stop: function() {
@@ -252,14 +276,8 @@ Swipe.prototype = {
       this.isScrolling = !!( this.isScrolling || Math.abs(this.deltaX) < Math.abs(this.deltaY) );
     }
 
-    // if user is not trying to scroll vertically
-    if (!this.isScrolling) {
-
-      // prevent native scrolling 
-      e.preventDefault();
-
-      // cancel slideshow
-      clearTimeout(this.interval);
+    // prevent native scrolling 
+    e.preventDefault();
 
       // increase resistance if first or last slide
       this.deltaX = 
@@ -268,22 +286,42 @@ Swipe.prototype = {
             || this.index == this.hpages - 1              // or if last slide and sliding right
             && this.deltaX < 0                            // and if sliding at all
           ) ?                      
-          ( Math.abs(this.deltaX) / this.cellhorizontalwidth + 1 )      // determine resistance level
+          ( Math.abs(this.deltaX) / this.cellhorizontalsize + 1 )      // determine resistance level
           : 1 );                                          // no resistance if false
-      
+
+	this.deltaY =
+		this.deltaY /
+		( (!this.vindex && this.deltaY > 0
+		  || this.vindex == this.vpages -1
+	          && this.deltaY < 0
+		) ?
+		( Math.abs(this.deltaY) / this.cellverticalsize + 1 )
+		: 1 );
+    
+// if user is not trying to scroll vertically
+    if (!this.isScrolling) {
+
+      // cancel slideshow
+      clearTimeout(this.interval);
+
+     //TODO: REDO THIS SECTION BECAUSE IT SUCKS. X and Y have to scroll separately, but sliding horizontally cannot reset the vertical position 
       // translate immediately 1-to-1
-      if (this.individual)
-      	this.element.style.MozTransform = this.element.style.webkitTransform = 'translate3d(' + (this.deltaX - this.index * this.cellhorizontalsize) + 'px,0,0)';
-      else
-        this.element.style.MozTransform = this.element.style.webkitTransform = 'translate3d(' + (this.deltaX - this.index * this.width) + 'px,0,0)';
-      
-      e.stopPropagation();
-    } else if (this.isScrolling){
+      if (this.individual) {
+      	this.element.style.MozTransform = this.element.style.webkitTransform = 'translate3d(' + (this.deltaX - this.index * this.cellhorizontalsize) + 'px,' + (this.deltaY - this.vindex * this.cellverticalsize) + 'px,0)';
+      }
+      else {
+        this.element.style.MozTransform = this.element.style.webkitTransform = 'translate3d(' + (this.deltaX - this.index * this.width) + 'px',+ (this.deltaY - this.vindex * this.height) + 'px,0)';
+    } }
+    else if (this.isScrolling){
        clearTimeout(this.interval);
        
-       this.element.style.MozTransform = this.element.style.webkitTransform = 'translate3D(0,'+(this,deltaY - this.vindex * this.cellverticalsize) + 'px,0)';
-       e.stopPropagation();
-    }
+       if (this.individual) {
+      	this.element.style.MozTransform = this.element.style.webkitTransform = 'translate3d(' + (this.deltaX - this.index * this.cellhorizontalsize) + 'px,' + (this.deltaY - this.vindex * this.cellverticalsize) + 'px,0)';
+       }
+       else {
+        this.element.style.MozTransform = this.element.style.webkitTransform = 'translate3d(' + (this.deltaX - this.index * this.width) + 'px,',+ (this.deltaY - this.vindex * this.height) + 'px,0)';
+    } }
+      e.stopPropagation();
 
   },
 
@@ -301,6 +339,12 @@ Swipe.prototype = {
       isPastBounds = (!this.index && this.deltaX > 0) || (this.index == this.hpages - 1 && this.deltaX < 0);
       // call slide function with slide end value based on isValidSlide and isPastBounds tests
       this.slide( this.index + ( isValidSlide && !isPastBounds ? (this.deltaX < 0 ? 1 : -1) : 0 ), this.speed );
+    }
+    else if (this.isScrolling) {
+	isValidSlide = (Math.abs(this.deltaY) > 20) || (Math.abs(this.deltaY) > this.cellverticalsize/2);
+	isPastBounds = (!this.vindex && this.deltaY > 0) || (this.vindex == this.vpages -1 && this.deltaY < 0);
+
+	this.vslide( this.vindex + (isValidSlide && !isPastBounds ? (this.deltaY < 0 ? 1 : -1) : 0 ), this.speed );
     }
     
     e.stopPropagation();
