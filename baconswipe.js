@@ -89,22 +89,23 @@ Swipe.prototype = {
 
 //calculate heights
     var rows = 0;   
-    while(this.height > 0) {
+    var extraheight = this.height;
+    while(extraheight > 0) {
 	rows++;
-	this.height -= cellheight;
+	extraheight -= cellheight;
     } 
-    this.height += cellheight;
-    var marginBottom = this.height/(rows - 1);
+    extraheight += cellheight;
+    var marginBottom = extraheight/(rows - 1);
     this.cellverticalsize = cellheight + marginBottom;
 
 //set the number of "pages" the slider will slide through depending on if a "page" is an individual grid item or a full viewport's worth of grid items
     if(this.individual) {
         this.hpages = this.columns;
-        this.vpages = this.rows;
+        this.vpages = rows;
     }
     else {
         this.hpages = Math.ceil(this.columns/(this.width/cellwidth)); 
-    	this.vpages = Math.ceil(this.rows/(this.height/cellheight));
+    	this.vpages = Math.ceil(rows/(this.height/cellheight));
     }
 //set sizing variables for each cell
     while (index--) {
@@ -119,6 +120,7 @@ Swipe.prototype = {
 
     // set start position and force translate to remove initial flickering
     this.slide(this.index, 0); 
+    this.vslide(this.vindex, 0);
 
     // show slider element
     this.container.style.visibility = 'visible';
@@ -138,16 +140,24 @@ Swipe.prototype = {
     style.webkitTransitionDuration = style.MozTransitionDuration = style.msTransitionDuration = style.OTransitionDuration = style.transitionDuration = duration + 'ms';
 
     // translate to given index position
-    if(this.individual) {
+    /*if(this.individual) {
       style.MozTransform = style.webkitTransform = 'translate3d(' + -(index * this.cellhorizontalsize) + 'px,0,0)';
       style.msTransform = style.OTransform = 'translateX(' + -(index * this.cellhorizontalsize) + 'px)';
     } else {
       style.MozTransform = style.webkitTransform = 'translate3d(' + -(index * this.width) + 'px,0,0)';
       style.msTransform = style.OTransform = 'translateX(' + -(index * this.width) + 'px)';
 
+    }*/
+    if(this.individual) {
+    	style.MozTransform = style.webkitTransform = 'translate3d(' + -(index * this.cellhorizontalsize) + 'px,' + -(this.vindex * this.cellverticalsize) + 'px,0)';
+      	style.msTransform = style.OTransform = 'translateX(' + -(index * this.cellhorizontalsize) + 'px)';
+    } else { 
+    	style.MozTransform = style.webkitTransform = 'translate3d(' + -(index * this.width) + 'px,' + -(this.vindex * this.height) + 'px,0)';
+      	style.msTransform = style.OTransform = 'translateX(' + -(index * this.width) + 'px)';
     }
     // set new index to allow for expression arguments
     this.index = index;
+    console.log('hslide: ' + this.vindex);
 
   },
 
@@ -156,14 +166,22 @@ Swipe.prototype = {
         if (duration == undefined)
 		duration = this.speed;
 	style.webkitTransitionDuration = style.MozTransitionDuration = style.msTransitionDuration = style.OTransitionDuration = style.transitionDuration = duration + 'ms';
-	if(this.individual) {
+	/*if(this.individual) {
       		style.MozTransform = style.webkitTransform = 'translate3d(0,' + -(vindex * this.cellverticalsize) + 'px,0)';
      		style.msTransform = style.OTransform = 'translateY(' + -(vindex * this.cellverticalsize) + 'px)';
     	} else { 
       		style.MozTransform = style.webkitTransform = 'translate3d(0,' + -(vindex * this.height) + 'px,0)';
       		style.msTransform = style.OTransform = 'translateY(' + -(vindex * this.height) + 'px)';
+	}*/
+	if(this.individual) {
+      		style.MozTransform = style.webkitTransform = 'translate3d(' + -(this.index * this.cellhorizontalsize) + 'px,' + -(vindex * this.cellverticalsize) + 'px,0)';
+     		style.msTransform = style.OTransform = 'translateY(' + -(vindex * this.cellverticalsize) + 'px)';
+    	} else { 
+      		style.MozTransform = style.webkitTransform = 'translate3d(' + -(this.index * this.width) + 'px,' + -(vindex * this.height) + 'px,0)';
+      		style.msTransform = style.OTransform = 'translateY(' + -(vindex * this.height) + 'px)';
 	}
 	this.vindex = vindex;
+    	console.log('vslide: ' + this.vindex);
   },
 
   getPos: function() {
@@ -239,6 +257,9 @@ Swipe.prototype = {
 
   onTouchStart: function(e) {
     
+    // prevent native scrolling 
+    e.preventDefault();
+
     this.start = {
 
       // get touch coordinates for delta calculations in onTouchMove
@@ -276,9 +297,6 @@ Swipe.prototype = {
       this.isScrolling = !!( this.isScrolling || Math.abs(this.deltaX) < Math.abs(this.deltaY) );
     }
 
-    // prevent native scrolling 
-    e.preventDefault();
-
       // increase resistance if first or last slide
       this.deltaX = 
         this.deltaX / 
@@ -288,40 +306,28 @@ Swipe.prototype = {
           ) ?                      
           ( Math.abs(this.deltaX) / this.cellhorizontalsize + 1 )      // determine resistance level
           : 1 );                                          // no resistance if false
-
 	this.deltaY =
 		this.deltaY /
-		( (!this.vindex && this.deltaY > 0
-		  || this.vindex == this.vpages -1
-	          && this.deltaY < 0
+		( (!this.vindex && this.deltaY < 0
+		  || this.vindex == this.vpages - 1
+	          && this.deltaY > 0
 		) ?
 		( Math.abs(this.deltaY) / this.cellverticalsize + 1 )
 		: 1 );
     
 // if user is not trying to scroll vertically
-    if (!this.isScrolling) {
+    if (this.individual && this.isScrolling) {
+	this.element.style.MozTransform = this.element.style.webkitTransform = 'translate(0,' + (this.deltaY - (this.vindex * this.cellverticalsize)) + 'px)';
+    } else if (this.isScrolling) {
+	this.element.style.MozTransform = this.element.style.webkitTransform = 'translate(0,' + (this.deltaY - (this.vindex * this.height)) + 'px)';
+    } else if (this.individual) {
+	this.element.style.MozTransform = this.element.style.webkitTransform = 'translate(' + (this.deltaX - (this.index * this.cellhorizontalsize)) + 'px,0)';
+    } else{
+	this.element.style.MozTransform = this.element.style.webkitTransform = 'translate(' + (this.deltaX - (this.index * this.width)) + 'px,0)';
+    } 
 
-      // cancel slideshow
-      clearTimeout(this.interval);
-
-     //TODO: REDO THIS SECTION BECAUSE IT SUCKS. X and Y have to scroll separately, but sliding horizontally cannot reset the vertical position 
-      // translate immediately 1-to-1
-      if (this.individual) {
-      	this.element.style.MozTransform = this.element.style.webkitTransform = 'translate3d(' + (this.deltaX - this.index * this.cellhorizontalsize) + 'px,' + (this.deltaY - this.vindex * this.cellverticalsize) + 'px,0)';
-      }
-      else {
-        this.element.style.MozTransform = this.element.style.webkitTransform = 'translate3d(' + (this.deltaX - this.index * this.width) + 'px',+ (this.deltaY - this.vindex * this.height) + 'px,0)';
-    } }
-    else if (this.isScrolling){
-       clearTimeout(this.interval);
-       
-       if (this.individual) {
-      	this.element.style.MozTransform = this.element.style.webkitTransform = 'translate3d(' + (this.deltaX - this.index * this.cellhorizontalsize) + 'px,' + (this.deltaY - this.vindex * this.cellverticalsize) + 'px,0)';
-       }
-       else {
-        this.element.style.MozTransform = this.element.style.webkitTransform = 'translate3d(' + (this.deltaX - this.index * this.width) + 'px,',+ (this.deltaY - this.vindex * this.height) + 'px,0)';
-    } }
-      e.stopPropagation();
+    
+    e.stopPropagation();
 
   },
 
