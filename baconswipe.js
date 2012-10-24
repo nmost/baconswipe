@@ -118,6 +118,7 @@ Swipe.prototype = {
       el.style.verticalAlign = 'top';
     }
 
+    this.element.style.webkitTransform = 'translate(0, 0)';
     // set start position and force translate to remove initial flickering
     this.slide(this.index, 0); 
     this.vslide(this.vindex, 0);
@@ -157,7 +158,6 @@ Swipe.prototype = {
     }
     // set new index to allow for expression arguments
     this.index = index;
-    console.log('hslide: ' + this.vindex);
 
   },
 
@@ -181,7 +181,6 @@ Swipe.prototype = {
       		style.msTransform = style.OTransform = 'translateY(' + -(vindex * this.height) + 'px)';
 	}
 	this.vindex = vindex;
-    	console.log('vslide: ' + this.vindex);
   },
 
   getPos: function() {
@@ -281,11 +280,11 @@ Swipe.prototype = {
     // set transition time to 0 for 1-to-1 touch movement
     this.element.style.MozTransitionDuration = this.element.style.webkitTransitionDuration = 0;
     
+    this.matrix = new WebKitCSSMatrix(window.getComputedStyle(this.element).webkitTransform);
     e.stopPropagation();
   },
 
   onTouchMove: function(e) {
-
     // ensure swiping with one touch and not pinching
     if(e.touches.length > 1 || e.scale && e.scale !== 1) return;
 
@@ -297,35 +296,28 @@ Swipe.prototype = {
       this.isScrolling = !!( this.isScrolling || Math.abs(this.deltaX) < Math.abs(this.deltaY) );
     }
 
-      // increase resistance if first or last slide
-      this.deltaX = 
-        this.deltaX / 
-          ( (!this.index && this.deltaX > 0               // if first slide and sliding left
-            || this.index == this.hpages - 1              // or if last slide and sliding right
-            && this.deltaX < 0                            // and if sliding at all
-          ) ?                      
-          ( Math.abs(this.deltaX) / this.cellhorizontalsize + 1 )      // determine resistance level
-          : 1 );                                          // no resistance if false
-	this.deltaY =
-		this.deltaY /
-		( (!this.vindex && this.deltaY < 0
-		  || this.vindex == this.vpages - 1
-	          && this.deltaY > 0
-		) ?
-		( Math.abs(this.deltaY) / this.cellverticalsize + 1 )
-		: 1 );
-    
-// if user is not trying to scroll vertically
-    if (this.individual && this.isScrolling) {
-	this.element.style.MozTransform = this.element.style.webkitTransform = 'translate(0,' + (this.deltaY - (this.vindex * this.cellverticalsize)) + 'px)';
-    } else if (this.isScrolling) {
-	this.element.style.MozTransform = this.element.style.webkitTransform = 'translate(0,' + (this.deltaY - (this.vindex * this.height)) + 'px)';
-    } else if (this.individual) {
-	this.element.style.MozTransform = this.element.style.webkitTransform = 'translate(' + (this.deltaX - (this.index * this.cellhorizontalsize)) + 'px,0)';
-    } else{
-	this.element.style.MozTransform = this.element.style.webkitTransform = 'translate(' + (this.deltaX - (this.index * this.width)) + 'px,0)';
-    } 
+    //increase resistance if first or last slide
+    this.deltaX = this.deltaX/
+	( (!this.index && this.deltaX > 0 			//if on first item sliding right
+	  || this.index == this.hpages - 1 && this.deltaX < 0 )	//or on last item sliding left
+	? (Math.abs(this.deltaX)/this.cellhorizontalsize + 1)	//decrease deltaX proportionately
+	: 1 ); 							//otherwise leave it alone
 
+    this.deltaY = this.deltaY/
+	( (!this.vindex && this.deltaY > 0			//if on first row sliding down
+	  || this.index == this.vpages - 1 && this.deltaY < 0 )	//or on bottom row sliding up
+	? (Math.abs(this.deltaY)/this.cellverticalsize + 1)
+	: 1);
+
+    if (this.individual && this.isScrolling) {
+	this.element.style.webkitTransform = this.matrix.translate(0,this.deltaY);
+    } else if (this.isScrolling) {
+	this.element.style.webkitTransform = this.matrix.translate(0,this.deltaY);  
+    } else if (this.individual) {
+	this.element.style.webkitTransform = this.matrix.translate(this.deltaX, 0);
+    } else{
+	this.element.style.webkitTransform = this.matrix.translate(this.deltaX,0); 
+    } 
     
     e.stopPropagation();
 
