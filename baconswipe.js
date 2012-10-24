@@ -1,19 +1,22 @@
 /*
+ * BaconSwipe 1.0
+ * Adapted from:
  * Swipe 1.0
- *
  * Brad Birdsall, Prime
  * Copyright 2011, Licensed GPL & MIT
  *
 */
 //TODO PUT SHIT IN OPTIONS
-window.Swipe = function(element, options, cellPaddedWidth, cellPaddedHeight, columns) {
+window.BaconSwipe = function(element, options, cellPaddedWidth, cellPaddedHeight, columns) {
 
   // return immediately if element doesn't exist
   if (!element) return null;
 
   var _this = this;
 
-  // retreive options
+  ///////
+  //OPTIONS
+  ////
   this.options = options || {};
   this.index = this.options.startSlide || 0;
   this.vindex = this.options.vindex || 0;
@@ -52,7 +55,7 @@ window.Swipe = function(element, options, cellPaddedWidth, cellPaddedHeight, col
 
 };
 
-Swipe.prototype = {
+BaconSwipe.prototype = {
 
   setup: function(cellwidth, cellheight) {
 
