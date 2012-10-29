@@ -6,7 +6,6 @@
  * Copyright 2011, Licensed GPL & MIT
  *
 */
-//TODO PUT SHIT IN OPTIONS
 window.BaconSwipe = function(element, options, cellPaddedWidth, cellPaddedHeight, columns) {
 
   // return immediately if element doesn't exist
@@ -24,6 +23,7 @@ window.BaconSwipe = function(element, options, cellPaddedWidth, cellPaddedHeight
   this.callback = this.options.callback || function() {};
   this.delay = this.options.auto || 0;
   this.individual = this.options.individual || false;
+  this.scrollsVertically = this.options.scrollsVertically == null ? true : this.options.scrollsVertically;
   this.columns = columns;
 
   // reference dom elements
@@ -83,8 +83,6 @@ BaconSwipe.prototype = {
     var cellsperrow = Math.floor(this.width/cellwidth);
     var marginRight = extrawidth/cellsperrow;
 
-//FIX FOR WEBKIT ENGINES: NOTE THIS MEANS YOU CAN'T HAVE MARGIN 0
-    marginRight+=1;
 //define the horizontal size
     this.cellhorizontalsize = marginRight + cellwidth + 1;
 //set the UL width
@@ -103,7 +101,7 @@ BaconSwipe.prototype = {
 
 //set the number of "pages" the slider will slide through depending on if a "page" is an individual grid item or a full viewport's worth of grid items
     if(this.individual) {
-        this.hpages = this.columns;
+        this.hpages = this.columns - 1;
         this.vpages = rows;
     }
     else {
@@ -120,6 +118,7 @@ BaconSwipe.prototype = {
       el.style.display = 'inline-block';
       el.style.verticalAlign = 'top';
     }
+    this.slides[this.slides.length - 1].style.borderRight = 'none';
 
     this.element.style.webkitTransform = 'translate(0, 0)';
     // set start position and force translate to remove initial flickering
@@ -312,9 +311,9 @@ BaconSwipe.prototype = {
 	? (Math.abs(this.deltaY)/this.cellverticalsize + 1)
 	: 1);
 
-    if (this.individual && this.isScrolling) {
+    if (this.individual && this.isScrolling && this.scrollsVertically) {
 	this.element.style.webkitTransform = this.matrix.translate(0,this.deltaY);
-    } else if (this.isScrolling) {
+    } else if (this.isScrolling && this.scrollsVertically) {
 	this.element.style.webkitTransform = this.matrix.translate(0,this.deltaY);  
     } else if (this.individual) {
 	this.element.style.webkitTransform = this.matrix.translate(this.deltaX, 0);
@@ -333,18 +332,42 @@ BaconSwipe.prototype = {
 
     // determine if slide attempt is past start and end
     var isPastBounds; 
+    var indexchange = 0;
 
     // if not scrolling vertically
     if (!this.isScrolling) {
       isValidSlide = (Math.abs(this.deltaX) > 20) || (Math.abs(this.deltaX) > this.cellhorizontalsize/2);
       isPastBounds = (!this.index && this.deltaX > 0) || (this.index == this.hpages - 1 && this.deltaX < 0);
+      if (isValidSlide && !isPastBounds){
+	if (!this.individual) {
+		indexchange = (this.deltaX < 0 ? 1: -1);
+	}
+	else {
+		indexchange = -Math.floor(this.deltaX/this.cellhorizontalsize);
+		if ((this.index + indexchange) > this.hpages - 1)
+			indexchange = this.hpages - 1 - this.index;
+		else if (this.index + indexchange < 0)
+			indexchange = -this.index;
+	}
+      }
       // call slide function with slide end value based on isValidSlide and isPastBounds tests
-      this.slide( this.index + ( isValidSlide && !isPastBounds ? (this.deltaX < 0 ? 1 : -1) : 0 ), this.speed );
+      this.slide( this.index + indexchange, this.speed );
     }
-    else if (this.isScrolling) {
+    else if (this.isScrolling && this.scrollsVertically) {
 	isValidSlide = (Math.abs(this.deltaY) > 20) || (Math.abs(this.deltaY) > this.cellverticalsize/2);
 	isPastBounds = (!this.vindex && this.deltaY > 0) || (this.vindex == this.vpages -1 && this.deltaY < 0);
 
+	if (!this.individual) {
+		indexchange = (this.deltaY < 0 ? 1: -1);
+	}
+	else {
+		indexchange = -Math.floor(this.deltaX/this.cellverticalsize);
+		if ((this.vindex + indexchange) > this.vpages - 1)
+			indexchange = this.vpages - 1 - this.vindex;
+		else if (this.vindex + indexchange < 0)
+			indexchange = -this.vindex;
+	}
+      // call slide function with slide end value based on isValidSlide and isPastBounds tests
 	this.vslide( this.vindex + (isValidSlide && !isPastBounds ? (this.deltaY < 0 ? 1 : -1) : 0 ), this.speed );
     }
     
