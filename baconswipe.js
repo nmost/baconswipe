@@ -50,7 +50,6 @@ window.BaconSwipe = function(element, options, cellPaddedWidth, cellPaddedHeight
     this.element.addEventListener('msTransitionEnd', this, false);
     this.element.addEventListener('oTransitionEnd', this, false);
     this.element.addEventListener('transitionend', this, false);
-    window.addEventListener('resize', this, false);
   }
 
 };
@@ -244,7 +243,6 @@ BaconSwipe.prototype = {
       case 'msTransitionEnd':
       case 'oTransitionEnd':
       case 'transitionend': this.transitionEnd(e); break;
-      case 'resize': this.setup(); break;
     }
   },
 
